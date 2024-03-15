@@ -1,0 +1,58 @@
+version: '3.2'
+name: 'telemetry-fabric'
+
+services:
+
+  elasticsearch:
+    image: elasticsearch:latest
+    container_name: elasticsearch
+    volumes:
+      - ./data/elasticsearch:/usr/share/elasticsearch/data
+    ports:
+      - "127.0.0.1:9200:9200"
+      - "127.0.0.1:9300:9300"
+    environment:
+      ES_JAVA_OPTS: "-Xmx512m -Xms512m"
+      ELASTIC_PASSWORD: changeme
+      # ENROLLMENT_TOKEN: changeme
+      # Use single node discovery in order to disable production mode and avoid bootstrap checks.
+      # see: https://www.elastic.co/guide/en/elasticsearch/reference/current/bootstrap-checks.html
+      discovery.type: single-node
+      # Disable SSL
+      # xpack.security.http.ssl.enabled: false
+      xpack.security.enabled: false
+    networks:
+      - exp
+
+  kibana:
+    image: kibana:latest
+    container_name: kibana
+    ports:
+      - "127.0.0.1:5601:5601"
+    depends_on:
+      - elasticsearch
+    networks:
+      - exp
+
+  nifi:
+    container_name: "nifi"
+    image: apache/nifi
+    ports:
+      - "127.0.0.1:8080:8080"
+      - "127.0.0.1:8081-8089:8081-8089"
+    environment:
+      # nifi.web.http.host
+      NIFI_WEB_HTTP_HOST: '0.0.0.0'
+      # nifi.web.http.port
+      #   HTTP Port
+      NIFI_WEB_HTTP_PORT: 8080
+    volumes:
+      #- ./data/nifi:/opt/nifi/
+      - ./data/nifi_logs:/var/log/nifi
+    networks:
+      - exp
+    restart: unless-stopped
+
+networks:
+  exp:
+    driver: bridge
